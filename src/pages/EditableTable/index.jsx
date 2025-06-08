@@ -9,14 +9,18 @@ import {
   Select,
   Space,
   Popconfirm,
+  Typography,
+  InputNumber
 } from "antd";
 import { DownOutlined } from "@ant-design/icons";
+import axios from 'axios';
+
 
 import "./index.scss";
 
 const { Option } = Select;
 
-const AdvancedSearchForm = ({ form }) => {
+const AdvancedSearchForm = ({ searchForm }) => {
   const [expand, setExpand] = useState(false);
 
   const getFields = () => {
@@ -70,7 +74,7 @@ const AdvancedSearchForm = ({ form }) => {
 
   return (
     <Form
-      form={form}
+      form={searchForm}
       name="advanced_search"
       className="advanced-searchForm"
       onFinish={onFinish}
@@ -83,7 +87,7 @@ const AdvancedSearchForm = ({ form }) => {
           </Button>
           <Button
             onClick={() => {
-              form.resetFields();
+              searchForm.resetFields();
             }}
           >
             Reset
@@ -103,7 +107,8 @@ const AdvancedSearchForm = ({ form }) => {
 };
 
 const EditableTable = () => {
-  const [form] = Form.useForm();
+  const [searchForm] = Form.useForm();
+  const [editableTableForm] = Form.useForm();
   const [count, setCount] = useState(2);
   const [dataSource, setDataSource] = useState([
     {
@@ -120,6 +125,15 @@ const EditableTable = () => {
     },
   ]);
   const EditableContext = React.createContext(null);
+  const [editingKey, setEditingKey] = useState('');
+  const isEditing = (record) => record.key === editingKey;
+
+  useEffect(() => {
+    axios.get('/api/user').then(res => {
+      console.log(res.data); 
+      // 输出: { code:200, data: { token:"...", username:"张三" } }
+    });
+  }, []);
 
   // Function to add a new row
   // This function creates a new data object and updates the dataSource state
@@ -134,102 +148,88 @@ const EditableTable = () => {
     setCount(count + 1);
   };
 
+  const handleEdit = (record) => {
+    editableTableForm.setFieldsValue({ name: "", age: "", address: "", ...record });
+    setEditingKey(record.key);
+  };
+
+  const cancel = () => {
+    setEditingKey('');
+  };
+
   const handleDelete = (key) => {
     const newData = dataSource.filter((item) => item.key !== key);
     setDataSource(newData);
   };
 
-  const EditableRow = ({ index, ...props }) => {
-    const [form] = Form.useForm();
-    return (
-      <Form form={form} component={false}>
-        <EditableContext.Provider value={form}>
-          <tr {...props} />
-        </EditableContext.Provider>
-      </Form>
-    );
-  };
-  const handleSave = (row) => {
-    const newData = [...dataSource];
-    const index = newData.findIndex((item) => row.key === item.key);
-    const item = newData[index];
-    newData.splice(index, 1, {
-      ...item,
-      ...row,
-    });
-    setDataSource(newData);
+  const handleSave = async (key) => {
+    try {
+      const row = (await editableTableForm.validateFields()) || {};
+
+      const newData = [...dataSource];
+      const index = newData.findIndex((item) => key === item.key);
+      if (index > -1) {
+        const item = newData[index];
+        newData.splice(index, 1, {
+          ...item,
+          ...row,
+        });
+        setDataSource(newData);
+        setEditingKey('');
+      } else {
+        newData.push(row);
+        setDataSource(newData);
+        setEditingKey('');
+      }
+    } catch (errInfo) {
+      console.log('Validate Failed:', errInfo);
+    }
 };
 
 // component for editable cell
+const EditableCell = ({
+  editing,
+  dataIndex,
+  title,
+  inputType,
+  record,
+  index,
+  children,
+  ...restProps
+}) => {
+  const inputNode = inputType === 'number' ? <InputNumber /> : <Input />;
 
-  const EditableCell = ({
-    title,
-    editable,
-    children,
-    dataIndex,
-    record,
-    handleSave,
-    ...restProps
-  }) => {
-    const [editing, setEditing] = useState(false);
-    const inputRef = useRef();
-    const form = useContext(EditableContext);
-
-    useEffect(() => {
-      if (editing) {
-        inputRef.current?.focus();
-      }
-    }, [editing]);
-
-    const toggleEdit = () => {
-      setEditing(!editing);
-      form.setFieldsValue({ [dataIndex]: record[dataIndex] });
-    };
-
-    const save = async () => {
-      try {
-        const values = await form.validateFields();
-
-        toggleEdit();
-        handleSave({ ...record, ...values });
-      } catch (errInfo) {
-        console.log("Save failed:", errInfo);
-      }
-    };
-
-    let childNode = children;
-
-    if (editable) {
-      childNode = editing ? (
+  return (
+    <td {...restProps}>
+      {editing ? (
         <Form.Item
-          style={{ margin: 0 }}
           name={dataIndex}
-          rules={[{ required: true, message: `${title} is required.` }]}
+          style={{ margin: 0 }}
+          rules={[
+            {
+              required: true,
+              message: `Please Input ${title}!`,
+            },
+          ]}
         >
-          <Input ref={inputRef} onPressEnter={save} onBlur={save} />
+          {inputNode}
         </Form.Item>
       ) : (
-        <div
-          className="editable-cell-value-wrap"
-          style={{ paddingInlineEnd: 24 }}
-          onClick={toggleEdit}
-        >
-          {children}
-        </div>
-      );
-    }
+        children
+      )}
+    </td>
+  );
+};
 
-    return <td {...restProps}>{childNode}</td>;
-  };
 
   const components = {
     body: {
-      row: EditableRow,
+      // row: EditableRow,
       cell: EditableCell,
     },
   };
 
-  const defaultColumns = [
+  const columns = [
     {
       title: "name",
       dataIndex: "name",
@@ -239,27 +239,55 @@ const EditableTable = () => {
     {
       title: "age",
       dataIndex: "age",
+      width: '15%',
+      editable: true,
     },
     {
       title: "address",
       dataIndex: "address",
+      width: '40%',
+      editable: true,
     },
     {
       title: "operation",
       dataIndex: "operation",
-      render: (_, record) =>
-        dataSource.length >= 1 ? (
-          <Popconfirm
-            title="Sure to delete?"
-            onConfirm={() => handleDelete(record.key)}
-          >
-            <a>Delete</a>
-          </Popconfirm>
-        ) : null,
+      render: (_, record) => {
+        const editable = isEditing(record);
+        return editable ? (
+          <span>
+            <Typography.Link
+              onClick={() => handleSave(record.key)}
+              style={{ marginInlineEnd: 8 }}
+            >
+              Save
+            </Typography.Link>
+            <Popconfirm title="Sure to cancel?" onConfirm={cancel}>
+              <a>Cancel</a>
+            </Popconfirm>
+          </span>
+        ) : (
+          <>
+            <Typography.Link
+              disabled={editingKey !== ""}
+              onClick={() => handleEdit(record)}
+              style={{ marginInlineEnd: 8 }}
+            >
+              Edit
+            </Typography.Link>
+            <Popconfirm
+              title="Sure to delete?"
+              onConfirm={() => handleDelete(record.key)}
+            >
+              <Typography.Link  disabled={editingKey !== ""} type="danger">Delete</Typography.Link>
+            </Popconfirm>
+          </>
+        );
+      }
     },
+
   ];
 
-  const columns = defaultColumns.map((col) => {
+  const mergedColumns = columns.map((col) => {
     if (!col.editable) {
       return col;
     }
@@ -267,28 +295,31 @@ const EditableTable = () => {
       ...col,
       onCell: (record) => ({
         record,
-        editable: col.editable,
+        inputType: col.dataIndex === 'age' ? 'number' : 'text',
         dataIndex: col.dataIndex,
         title: col.title,
-        handleSave,
+        editing: isEditing(record),
       }),
     };
   });
 
+
   return (
     <>
-      <AdvancedSearchForm form={form} />
+      <AdvancedSearchForm searchForm={searchForm} />
       <div className="editable-table">
         <Button onClick={handleAdd} type="primary" style={{ marginBottom: 16 }}>
           Add a row
         </Button>
-        <Table
-          components={components}
-          rowClassName={() => "editable-row"}
-          bordered
-          dataSource={dataSource}
-          columns={columns}
-        />
+        <Form form={editableTableForm} component={false}>
+          <Table
+            components={components}
+            rowClassName={() => "editable-row"}
+            bordered
+            dataSource={dataSource}
+            columns={mergedColumns}
+          />
+        </Form>
       </div>
     </>
   );
