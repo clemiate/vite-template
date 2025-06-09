@@ -110,28 +110,18 @@ const EditableTable = () => {
   const [searchForm] = Form.useForm();
   const [editableTableForm] = Form.useForm();
   const [count, setCount] = useState(2);
-  const [dataSource, setDataSource] = useState([
-    {
-      key: "0",
-      name: "Edward King 0",
-      age: "32",
-      address: "London, Park Lane no. 0",
-    },
-    {
-      key: "1",
-      name: "Edward King 1",
-      age: "32",
-      address: "London, Park Lane no. 1",
-    },
-  ]);
-  const EditableContext = React.createContext(null);
+  const [dataSource, setDataSource] = useState([]);
   const [editingKey, setEditingKey] = useState('');
   const isEditing = (record) => record.key === editingKey;
 
   useEffect(() => {
-    axios.get('/api/user').then(res => {
-      console.log(res.data); 
-      // 输出: { code:200, data: { token:"...", username:"张三" } }
+    axios.get('/api/users').then(res => {
+      console.log("res", res);
+      if (res.status === 200) {
+        setDataSource(res.data.data)
+      } else {
+        setDataSource([]);
+      }
     });
   }, []);
 
@@ -140,11 +130,14 @@ const EditableTable = () => {
   const handleAdd = () => {
     const newData = {
       key: count,
-      name: `Edward King ${count}`,
-      age: "32",
-      address: `London, Park Lane no. ${count}`,
+      name: ``,
+      age: "",
+      phone: "",
+      email: "",
+      address: ``,
     };
-    setDataSource([...dataSource, newData]);
+    setDataSource([newData,...dataSource]);
+    setEditingKey(count);
     setCount(count + 1);
   };
 
@@ -233,24 +226,37 @@ const EditableCell = ({
     {
       title: "name",
       dataIndex: "name",
-      width: "30%",
+      width: 120,
       editable: true,
     },
     {
       title: "age",
       dataIndex: "age",
-      width: '15%',
+      width: 100,
+      editable: true,
+    },
+    {
+      title: "phone",
+      dataIndex: "phone",
+      width: 120,
+      editable: true,
+    },
+    {
+      title: "email",
+      dataIndex: "email",
+      width: 120,
       editable: true,
     },
     {
       title: "address",
       dataIndex: "address",
-      width: '40%',
+      width: 200,
       editable: true,
     },
     {
       title: "operation",
       dataIndex: "operation",
+      width: 200,
       render: (_, record) => {
         const editable = isEditing(record);
         return editable ? (
@@ -295,7 +301,8 @@ const EditableCell = ({
       ...col,
       onCell: (record) => ({
         record,
-        inputType: col.dataIndex === 'age' ? 'number' : 'text',
+        inputType: col.dataIndex === 'age' ? 'number' : 'text', // ro
+        // todo 多类型的数据switch处理, select
         dataIndex: col.dataIndex,
         title: col.title,
         editing: isEditing(record),
