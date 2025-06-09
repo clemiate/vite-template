@@ -36,6 +36,13 @@ Github模版下载,什么模版BetterZip‌ 解压软件
 https://github.com/wvOoOvw/React-Template 
 npm create vite@latest my-vite-app
 
+lodash中文网:
+https://www.lodashjs.com/docs/lodash.chunk
+
+
+moment中文网:
+https://momentjs.cn/
+
 
 第一面:
 https://ant-design.antgroup.com/components/overview-cn 
@@ -77,6 +84,8 @@ npm install echarts --save
 terminal
 
 柱状图，饼图，横向柱状图
+![alt text](image.png)
+![alt text](image-1.png)
 
 # 编程相关问题
 做完了以后呢，两个面试官会进来，先是跟您review整个coding的思路，为什么这么写？一步一步会问的很细！！！然后在跑通的时候，也问您会不会有什么其他的更优化的想法？或者随机问您能在过往的一些项目基本上都是怎么去对接的？怎么做的开发等等？
