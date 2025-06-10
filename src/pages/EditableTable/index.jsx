@@ -1,4 +1,5 @@
 import React, { useState, useContext, useRef, useEffect } from "react";
+// import { useSetState, useMount } from "react-use";
 import {
   Table,
   Input,
@@ -10,101 +11,18 @@ import {
   Space,
   Popconfirm,
   Typography,
-  InputNumber
+  InputNumber,
+  DatePicker
 } from "antd";
-import { DownOutlined } from "@ant-design/icons";
+import { SearchOutlined, SyncOutlined } from "@ant-design/icons";
 import axios from 'axios';
-
+import moment from "moment";
 
 import "./index.scss";
+import countryData from "@/mock/country.json";
 
 const { Option } = Select;
-
-const AdvancedSearchForm = ({ searchForm }) => {
-  const [expand, setExpand] = useState(false);
-
-  const getFields = () => {
-    const count = expand ? 10 : 6;
-    const children = [];
-    for (let i = 0; i < count; i++) {
-      children.push(
-        <Col span={8} key={i}>
-          {i % 3 !== 1 ? (
-            <Form.Item
-              name={`field-${i}`}
-              label={`Field ${i}`}
-              rules={[
-                {
-                  required: true,
-                  message: "Input something!",
-                },
-              ]}
-            >
-              <Input placeholder="placeholder" />
-            </Form.Item>
-          ) : (
-            <Form.Item
-              name={`field-${i}`}
-              label={`Field ${i}`}
-              rules={[
-                {
-                  required: true,
-                  message: "Select something!",
-                },
-              ]}
-              initialValue="1"
-            >
-              <Select>
-                <Option value="1">
-                  longlonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglong
-                </Option>
-                <Option value="2">222</Option>
-              </Select>
-            </Form.Item>
-          )}
-        </Col>
-      );
-    }
-    return children;
-  };
-
-  const onFinish = (values) => {
-    console.log("Received values of form: ", values);
-  };
-
-  return (
-    <Form
-      form={searchForm}
-      name="advanced_search"
-      className="advanced-searchForm"
-      onFinish={onFinish}
-    >
-      <Row gutter={24}>{getFields()}</Row>
-      <div style={{ textAlign: "right" }}>
-        <Space size="small">
-          <Button type="primary" htmlType="submit">
-            Search
-          </Button>
-          <Button
-            onClick={() => {
-              searchForm.resetFields();
-            }}
-          >
-            Reset
-          </Button>
-          {/* <a
-            style={{ fontSize: 12 }}
-            onClick={() => {
-              setExpand(!expand);
-            }}
-          >
-            <DownOutlined rotate={expand ? 180 : 0} /> Collapse
-          </a> */}
-        </Space>
-      </div>
-    </Form>
-  );
-};
+const { RangePicker } = DatePicker;
 
 const EditableTable = () => {
   const [searchForm] = Form.useForm();
@@ -113,17 +31,65 @@ const EditableTable = () => {
   const [dataSource, setDataSource] = useState([]);
   const [editingKey, setEditingKey] = useState('');
   const isEditing = (record) => record.key === editingKey;
+  // 分页相关参数
+  const [page, setPage] = useState({
+    pageNum: 1,
+    pageSize: 10,
+    total: 0,
+  });
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
+    setLoading(true);
     axios.get('/api/users').then(res => {
       console.log("res", res);
       if (res.status === 200) {
         setDataSource(res.data.data)
+        setPage({
+          pageNum: page.pageNum,
+          pageSize: page.pageSize,
+          // total: res.data.data.length,
+        });
+        setLoading(false);
       } else {
         setDataSource([]);
       }
     });
   }, []);
+
+  const onSearch = () => {
+    const values = searchForm.getFieldsValue();
+
+    const params = {
+      current_page: page.pageNum,
+      page_size: page.pageSize,
+      country: values.country || "",
+      content: values.content || "",
+      start_time: values.date_range
+        ? moment(values.date_range[0])
+          .startOf("day")
+          .format("YYYY-MM-DD HH:mm:ss")
+        : "",
+      end_time: values.date_range
+        ? moment(values.date_range[1])
+          .endOf("day")
+          .format("YYYY-MM-DD HH:mm:ss")
+        : "",
+    };
+
+    console.log("onSearch", values, params);
+
+  }
+
+  // 表格页码改变
+  const onTablePageChange = (pageNum, pageSize) => {
+    onSearch({ pageNum, pageSize });
+    setPage({
+      pageNum,
+      pageSize
+    });
+  };
+
 
   // Function to add a new row
   // This function creates a new data object and updates the dataSource state
@@ -136,7 +102,7 @@ const EditableTable = () => {
       email: "",
       address: ``,
     };
-    setDataSource([newData,...dataSource]);
+    setDataSource([newData, ...dataSource]);
     setEditingKey(count);
     setCount(count + 1);
   };
@@ -177,42 +143,42 @@ const EditableTable = () => {
     } catch (errInfo) {
       console.log('Validate Failed:', errInfo);
     }
-};
+  };
 
-// component for editable cell
-const EditableCell = ({
-  editing,
-  dataIndex,
-  title,
-  inputType,
-  record,
-  index,
-  children,
-  ...restProps
-}) => {
-  const inputNode = inputType === 'number' ? <InputNumber /> : <Input />;
+  // component for editable cell
+  const EditableCell = ({
+    editing,
+    dataIndex,
+    title,
+    inputType,
+    record,
+    index,
+    children,
+    ...restProps
+  }) => {
+    const inputNode = inputType === 'number' ? <InputNumber /> : <Input />;
 
-  return (
-    <td {...restProps}>
-      {editing ? (
-        <Form.Item
-          name={dataIndex}
-          style={{ margin: 0 }}
-          rules={[
-            {
-              required: true,
-              message: `Please Input ${title}!`,
-            },
-          ]}
-        >
-          {inputNode}
-        </Form.Item>
-      ) : (
-        children
-      )}
-    </td>
-  );
-};
+    return (
+      <td {...restProps}>
+        {editing ? (
+          <Form.Item
+            name={dataIndex}
+            style={{ margin: 0 }}
+            rules={[
+              {
+                required: true,
+                message: `Please Input ${title}!`,
+              },
+            ]}
+          >
+            {inputNode}
+          </Form.Item>
+        ) : (
+          children
+        )}
+      </td>
+    );
+  };
 
 
   const components = {
@@ -252,6 +218,9 @@ const EditableCell = ({
       dataIndex: "address",
       width: 200,
       editable: true,
+      render: (value, record, index) => {
+        return  value ? `${value} ${index}` : ""
+      }
     },
     {
       title: "operation",
@@ -284,7 +253,7 @@ const EditableCell = ({
               title="Sure to delete?"
               onConfirm={() => handleDelete(record.key)}
             >
-              <Typography.Link  disabled={editingKey !== ""} type="danger">Delete</Typography.Link>
+              <Typography.Link disabled={editingKey !== ""} type="danger">Delete</Typography.Link>
             </Popconfirm>
           </>
         );
@@ -311,6 +280,81 @@ const EditableCell = ({
   });
 
 
+  const AdvancedSearchForm = ({ searchForm }) => {
+
+    const getFields = () => {
+      return (
+        <React.Fragment>
+          <Col span={6}>
+            <Form.Item name="country" label="Country">
+              <Select
+                showSearch
+                allowClear
+                placeholder="please select country"
+                filterOption={(input, option) =>
+                  (option?.label ?? "")
+                    .toLowerCase()
+                    .includes(input.toLowerCase())
+                }
+                options={countryData.map((ele) => ({
+                  value: ele?.name.common,
+                  label: ele?.name.common,
+                }))}
+              />
+            </Form.Item>
+          </Col>
+          <Col span={6}>
+            <Form.Item name="content" label="Content" rules={[{ max: 50 }]}>
+              <Input placeholder="please input" allowClear />
+            </Form.Item>
+          </Col>
+          <Col span={6}>
+            <Form.Item name="date_range" label="Date">
+              <RangePicker allowClear />
+            </Form.Item>
+          </Col>
+        </React.Fragment>
+      );
+    };
+
+    const onFinish = (values) => {
+      console.log("Received values of form: ", values);
+    };
+
+    return (
+      <Form
+        form={searchForm}
+        name="advanced_search"
+        className="advanced-searchForm"
+      // onFinish={onFinish}
+      >
+        <Row gutter={24}>
+          {getFields()}
+          <Col span={6} style={{ textAlign: "right" }}>
+            <Space size="small">
+              <Button
+                type="primary"
+                onClick={onSearch}
+                icon={<SearchOutlined />}
+              >
+                Search
+              </Button>
+              <Button
+                onClick={() => {
+                  form.resetFields();
+                  onSearch();
+                }}
+                icon={<SyncOutlined />}
+              >
+                Reset
+              </Button>
+            </Space>
+          </Col>
+        </Row>
+      </Form>
+    );
+  };
+
   return (
     <>
       <AdvancedSearchForm searchForm={searchForm} />
@@ -320,11 +364,20 @@ const EditableCell = ({
         </Button>
         <Form form={editableTableForm} component={false}>
           <Table
+            loading={loading}
             components={components}
             rowClassName={() => "editable-row"}
             bordered
             dataSource={dataSource}
             columns={mergedColumns}
+            pagination={{
+              // total: page.total,
+              current: page.pageNum,
+              pageSize: page.pageSize,
+              // showQuickJumper: true, // Go to XX Page
+              showTotal: (t) => `Total ${t} items`,
+              onChange: onTablePageChange,
+            }}
           />
         </Form>
       </div>
