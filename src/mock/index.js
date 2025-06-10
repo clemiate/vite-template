@@ -20,6 +20,25 @@ export default [
       ],
     },
   },
+  {
+    url: "/api/barcharts",
+    method: "get",
+    response: {
+      status: 200,
+      "data|24": [
+        {
+          // 生成10条数据
+          id: "@id", // 随机ID
+          key: "@id",
+          name: "@name",
+          email: "@email",
+          "value|18-60": 1,
+          phone: /^1[3-9]\d{9}$/,
+          address: "London, Park Lane no. 1",
+        },
+      ],
+    },
+  }
 ];
 
 // Mock.Random.extend({
