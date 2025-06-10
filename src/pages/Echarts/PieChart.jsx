@@ -1,16 +1,18 @@
 
 import React, { useEffect, useRef } from 'react';
 import * as echarts from 'echarts';
+import _ from "lodash";
 
-export default function PieChart() {
+export default function PieChart({ option }) {
   const pieChartRef = useRef(null);
+  console.log("option", option);
   
   useEffect(() => {
     const myChart = echarts.init(pieChartRef.current);
     
-    const option = {
+    const myOption = {
       title: {
-        text: '示例饼图',
+        text: '',
         left: 'center'
       },
       tooltip: {
@@ -18,20 +20,15 @@ export default function PieChart() {
       },
       legend: {
         orient: 'vertical',
-        left: 'left'
+        left: 'left',
+        top: 80,
       },
       series: [
         {
-          name: '访问来源',
+          name: 'population',
           type: 'pie',
           radius: '50%',
-          data: [
-            { value: 1048, name: '搜索引擎' },
-            { value: 735, name: '直接访问' },
-            { value: 580, name: '邮件营销' },
-            { value: 484, name: '联盟广告' },
-            { value: 300, name: '视频广告' }
-          ],
+          data: [],
           emphasis: {
             itemStyle: {
               shadowBlur: 10,
@@ -43,12 +40,20 @@ export default function PieChart() {
       ]
     };
 
-    myChart.setOption(option);
+    if (!_.isEmpty(option) ) {
+      myChart.setOption({
+        ...myOption,
+        ...option,
+        series: {...myOption.series[0], ...option?.series[0]}
+      });
+    } else {
+      myChart.setOption(myOption);
+    }
     
     return () => {
       myChart.dispose();
     };
-  }, []);
+  }, [option]);
 
   return <div ref={pieChartRef} style={{ width: '100%', height: '400px' }} />;
 }

@@ -1,12 +1,27 @@
 
 import React, { useEffect, useRef } from 'react';
 import * as echarts from 'echarts';
+import _ from "lodash";
 
-export default function VerticalBarCharts() {
+export default function VerticalBarChart({ allData }) {
+  console.log("allData", allData);
   const barChartRef = useRef(null);
   
   useEffect(() => {
     const myChart = echarts.init(barChartRef.current);
+    const groupByDate = _.groupBy(allData, "date")
+    const keys = _.keys(groupByDate);
+    const groupByDateArr = keys.map((ele) => {
+      return {
+        name: ele,
+        type: "bar",
+        data: groupByDate[ele].map(item => item.population),
+        country: groupByDate[ele].map(item => item.country),
+      }
+    })
+
+    console.log("groupByDate", groupByDate,keys, groupByDateArr);
+
     
     const option = {
         title: {
@@ -31,20 +46,14 @@ export default function VerticalBarCharts() {
         },
         yAxis: {
           type: 'category',
-          data: ['Brazil', 'Indonesia', 'USA', 'India', 'China', 'World']
+          data: groupByDateArr.length > 1 ? [...(groupByDateArr[0].country).reverse(), "World"] : []
         },
-        series: [
-          {
-            name: '2011',
-            type: 'bar',
-            data: [18203, 23489, 29034, 104970, 131744, 630230]
-          },
-          {
-            name: '2012',
-            type: 'bar',
-            data: [19325, 23438, 31000, 121594, 134141, 681807]
-          }
-        ]
+        series: groupByDateArr.map((ele) => ({
+          ...ele,
+          data: [...(ele.data).reverse(), _.reduce(ele.data, function(sum, n) {
+            return sum + n;
+          }, 0)]
+        }))
       };
 
     myChart.setOption(option);
@@ -52,7 +61,7 @@ export default function VerticalBarCharts() {
     return () => {
       myChart.dispose();
     };
-  }, []);
+  }, [allData]);
 
   return <div ref={barChartRef} style={{ width: '100%', height: '400px' }} />;
 }
